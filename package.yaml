@@ -51,6 +51,7 @@ executables:
     - process >= 1.6.16.0
     - random >= 1.2.1.1
     - bytestring >= 0.11.4.0
+    - binary >= 0.8.9.0
 
 tests:
   exp1-test:

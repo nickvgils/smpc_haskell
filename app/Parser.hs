@@ -2,7 +2,7 @@ module Parser where
 
 
 import Options.Applicative
-
+import Data.Int
 
 options :: IO Sample
 options = execParser opts
@@ -13,8 +13,8 @@ options = execParser opts
         <> header "hello - a test for optparse-applicative" )
 
 data Sample = Sample
-  { enthusiasm :: Int,
-     index :: Int }
+  { enthusiasm :: Int16,
+     index :: Int16 }
 
 sample :: Parser Sample
 sample = Sample
