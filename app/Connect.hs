@@ -53,7 +53,7 @@ clientLoop chan pid n = do
     sock <- socket (addrFamily serverAddr) Stream defaultProtocol
     res <- try @IOException $ connect sock (addrAddress serverAddr)
     case res of
-      Right () -> do  -- connection succesful
+      Right () -> do  -- connection successful
         _ <- send sock (BL.toStrict (encode pid))
         clientLoop chan pid (n-1)
       Left _ -> do  -- exception
