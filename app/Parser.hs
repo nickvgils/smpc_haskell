@@ -13,8 +13,8 @@ options = execParser opts
         <> header "hello - a test for optparse-applicative" )
 
 data Sample = Sample
-  { enthusiasm :: Int16,
-     index :: Int16 }
+  { enthusiasm :: Int,
+     index :: Int }
 
 sample :: Parser Sample
 sample = Sample

@@ -15,9 +15,9 @@ import Control.Monad.Fix (fix)
 
 type Msg = String
 
-createConnections :: Int16 -> Int16 -> IO [(Chan Msg, Chan Msg)]
+createConnections :: Int -> Int -> IO [(Chan Msg, Chan Msg)]
 createConnections pid m = do
-    channels <- channelLoop pid m
+    channels <- channelLoop m
     print (pid)
     print (4242 + pid)
 
@@ -29,11 +29,10 @@ createConnections pid m = do
 
     clientLoop channels pid (m-1-pid)
 
-
     return channels
 
 
-serverLoop :: [(Chan Msg, Chan Msg)] -> Socket -> Int16 -> Int16 -> IO ()
+serverLoop :: [(Chan Msg, Chan Msg)] -> Socket -> Int -> Int -> IO ()
 serverLoop _ _ _ 0 = return ()
 serverLoop chan sock pid n = do
     putStrLn "klaar voor connectie"
@@ -41,20 +40,22 @@ serverLoop chan sock pid n = do
     putStrLn "connected!"
     msg <- recv conn 1024
     -- print 122220
-    print (decode (BL.fromStrict msg) :: Int16)
+    _ <- forkIO (runConn sock (chan !! (fromIntegral (decode (BL.fromStrict msg) :: Int16) :: Int)) )
     serverLoop chan sock pid (n-1)
 
-clientLoop :: [(Chan Msg, Chan Msg)] -> Int16 -> Int16 -> IO ()
+clientLoop :: [(Chan Msg, Chan Msg)] -> Int -> Int -> IO ()
 clientLoop _ _ 0 = return ()
 clientLoop chan pid n = do
-    addrInfo <- getAddrInfo Nothing (Just "127.0.0.1") (Just $ show (4242 + pid + n))
+    let peer_pid = pid + n
+    addrInfo <- getAddrInfo Nothing (Just "127.0.0.1") (Just $ show (4242 + peer_pid))
     print addrInfo
     let serverAddr = head addrInfo
     sock <- socket (addrFamily serverAddr) Stream defaultProtocol
     res <- try @IOException $ connect sock (addrAddress serverAddr)
     case res of
       Right () -> do  -- connection successful
-        _ <- send sock (BL.toStrict (encode pid))
+        _ <- send sock $ BL.toStrict $ encode (fromIntegral pid :: Int16)
+        _ <- forkIO (runConn sock (chan !! peer_pid) )
         clientLoop chan pid (n-1)
       Left _ -> do  -- exception
         threadDelay 3000000
@@ -62,66 +63,16 @@ clientLoop chan pid n = do
 
 
 
-runConn :: Socket -> Chan Msg ->  Chan Msg -> IO ()
-runConn sock inChan outChan = do
+runConn :: Socket -> (Chan Msg, Chan Msg) -> IO ()
+runConn sock (inChan,outChan) = do
     return ()
-    -- hdl <- socketToHandle sock ReadWriteMode
-    -- hSetBuffering hdl NoBuffering
-
-    -- hPutStrLn hdl "Hi, what's your name?"
-    -- name <- fmap init (hGetLine hdl)
-    -- writeChan outChan ("--> " ++ name ++ " entered chat.")
-    -- hPutStrLn hdl ("Welcome, " ++ name ++ "!")
-
-    -- -- commLine <- dupChan chan
-
-    -- -- -- fork off a thread for reading from the duplicated channel
-    -- -- reader <- forkIO $ fix $ \loop -> do
-    -- --     (nextNum, line) <- readChan commLine
-    -- --     when (msgNum /= nextNum) $ hPutStrLn hdl line
-    -- --     loop
-
-    -- handle (\(SomeException _) -> return ()) $ fix $ \loop -> do
-    --     line <- fmap init (hGetLine hdl)
-    --     case line of
-    --          -- If an exception is caught, send a message and break the loop
-    --          "quit" -> hPutStrLn hdl "Bye!"
-    --          -- else, continue looping.
-    --          _      -> writeChan outChan (name ++ ": " ++ line) >> loop
-
-    -- -- killThread reader                      -- kill after the loop ends
-    -- -- broadcast ("<-- " ++ name ++ " left.") -- make a final broadcast
-    -- hClose hdl                             -- close the handle
 
 
-
-channelLoop :: Int16 -> Int16 -> IO [(Chan Msg, Chan Msg)]
-channelLoop _ 0 = return []
-channelLoop pid n = do
+channelLoop :: Int -> IO [(Chan Msg, Chan Msg)]
+channelLoop 0 = return []
+channelLoop n = do
     inChan <- newChan
     outChan <- newChan
-    rest <- channelLoop pid (n-1)
+    rest <- channelLoop (n-1)
     return ((inChan, outChan):rest)
 
-
--- connect :: IO ()
--- connect 0 = return ()
--- connect n = do
---   -- connect to all parties > self.pid
---   sock <- socket AF_INET Stream 0
---   setSocketOption sock ReuseAddr 1
---   bind sock (SockAddrInet 11265 0)
---   listen sock 2
---   -- chan <- newChan
---   -- _ <- forkIO $ fix $ \loop -> do
---   --   (_, _) <- readChan chan
---   --   loop
---   mainLoop sock chan 0
-
--- type Msg = (Int, String)
-
--- mainLoop :: Socket -> Chan Msg -> Int -> IO ()
--- mainLoop sock chan msgNum = do
---   conn <- accept sock
---   forkIO (runConn conn chan msgNum)
---   mainLoop sock chan $! msgNum + 1
